@@ -7,12 +7,14 @@
 
 #define LED_PIN D4
 #define NUM_PIXELS 3
+#define DEFAULT_NAME "lamp"
 
 Adafruit_NeoPixel strip(NUM_PIXELS, LED_PIN, NEO_GRB + NEO_KHZ800);
 ESP8266WebServer server(80);
 
 uint32_t colors[3] = {strip.Color(255, 0, 0), strip.Color(0, 255, 0), strip.Color(0, 0, 255)};
 bool isOn = false;
+char lampName[20] = DEFAULT_NAME; // Уникальное имя лампы (по умолчанию)
 
 void setColor(uint32_t color) {
     for (int i = 0; i < NUM_PIXELS; i++) {
@@ -36,22 +38,45 @@ void turnOffLamp() {
 void setup() {
     Serial.begin(115200);
 
+    if (!LittleFS.begin()) {
+        Serial.println("An error occurred while mounting LittleFS");
+        return;
+    }
+
+    // Загружаем сохранённое имя лампы, если есть
+    if (LittleFS.exists("/lampName.txt")) {
+        File file = LittleFS.open("/lampName.txt", "r");
+        file.readBytesUntil('\n', lampName, sizeof(lampName));
+        file.close();
+    } else {
+        strcpy(lampName, DEFAULT_NAME); // Если нет файла, используем имя по умолчанию
+    }
+    Serial.printf("Current lamp name: %s\n", lampName);
+
     WiFiManager wifiManager;
-    wifiManager.autoConnect("MyLampSetup");
+
+    // Добавляем поле для имени лампы
+    WiFiManagerParameter customLampName("lampName", "Enter lamp name", lampName, 20);
+    wifiManager.addParameter(&customLampName);
+
+    wifiManager.autoConnect("LampSetup");
 
     Serial.println("WiFi connected!");
     Serial.print("IP Address: ");
     Serial.println(WiFi.localIP());
 
-    // Настройка mDNS
-    if (MDNS.begin("mylamp")) {
-        Serial.println("mDNS responder started");
-        Serial.println("Access your lamp at: http://mylamp.local");
+     // Сохраняем новое имя лампы, если оно было изменено
+    if (strcmp(lampName, customLampName.getValue()) != 0) {
+        strcpy(lampName, customLampName.getValue());
+        File file = LittleFS.open("/lampName.txt", "w");
+        file.print(lampName);
+        file.close();
+        Serial.printf("New lamp name saved: %s\n", lampName);
     }
 
-    if (!LittleFS.begin()) {
-        Serial.println("An error occurred while mounting LittleFS");
-        return;
+    // Настраиваем mDNS с именем лампы
+    if (MDNS.begin(lampName)) {
+        Serial.printf("mDNS responder started for %s.local\n", lampName);
     }
 
     strip.begin();
