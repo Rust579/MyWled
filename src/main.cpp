@@ -1,22 +1,19 @@
 #include <ESP8266WiFi.h>
-#include <WiFiManager.h> // Подключение WiFiManager
+#include <WiFiManager.h> 
+#include <ESP8266WebServer.h>
+#include <Adafruit_NeoPixel.h>
 #include <ESP8266mDNS.h> // Подключение mDNS
-#include <ESP8266WebServer.h> // Подключение стандартного веб-сервера
-#include <Adafruit_NeoPixel.h> // Для работы с адресной лентой
+#include <LittleFS.h> // Для работы с файловой системой
 
-#define LED_PIN D4       // Пин подключения ленты
-#define NUM_PIXELS 3     // Количество светодиодов в ленте
+#define LED_PIN D4
+#define NUM_PIXELS 3
 
-// Настройка адресной ленты
 Adafruit_NeoPixel strip(NUM_PIXELS, LED_PIN, NEO_GRB + NEO_KHZ800);
-
-// Веб-сервер
 ESP8266WebServer server(80);
 
-// Цветовая палитра
-uint32_t colors[3] = {strip.Color(255, 0, 0), strip.Color(0, 255, 0), strip.Color(0, 0, 255)}; // Красный, зелёный, синий
+uint32_t colors[3] = {strip.Color(255, 0, 0), strip.Color(0, 255, 0), strip.Color(0, 0, 255)};
+bool isOn = false;
 
-// Функция для управления лентой
 void setColor(uint32_t color) {
     for (int i = 0; i < NUM_PIXELS; i++) {
         strip.setPixelColor(i, color);
@@ -24,15 +21,12 @@ void setColor(uint32_t color) {
     strip.show();
 }
 
-// Включение/выключение ленты
-bool isOn = false;
-
 void toggleLamp() {
     if (isOn) {
-        setColor(0); // Выключить
+        setColor(0);
         isOn = false;
     } else {
-        setColor(colors[0]); // Включить с красным
+        setColor(colors[0]);
         isOn = true;
     }
 }
@@ -40,11 +34,9 @@ void toggleLamp() {
 void setup() {
     Serial.begin(115200);
 
-    // Настройка WiFi через WiFiManager
     WiFiManager wifiManager;
     wifiManager.autoConnect("MyLampSetup");
 
-    // Успешное подключение к WiFi
     Serial.println("WiFi connected!");
     Serial.print("IP Address: ");
     Serial.println(WiFi.localIP());
@@ -55,38 +47,29 @@ void setup() {
         Serial.println("Access your lamp at: http://mylamp.local");
     }
 
-    // Инициализация ленты
-    strip.begin();
-    strip.show(); // Очистить ленту
+    if (!LittleFS.begin()) {
+        Serial.println("An error occurred while mounting LittleFS");
+        return;
+    }
 
-    // Веб-страница управления
+    strip.begin();
+    strip.show();
+
     server.on("/", HTTP_GET, []() {
-        String html = R"rawliteral(
-          <!DOCTYPE html>
-          <html>
-          <head>
-            <title>My Lamp</title>
-            <meta charset="UTF-8">
-          </head>
-          <body>
-            <h1>Управление лампой</h1>
-            <button onclick="fetch('/toggle')">Вкл/Выкл</button>
-            <button onclick="fetch('/color?c=red')">Красный</button>
-            <button onclick="fetch('/color?c=green')">Зелёный</button>
-            <button onclick="fetch('/color?c=blue')">Синий</button>
-          </body>
-          </html>
-        )rawliteral";
-        server.send(200, "text/html", html);
+        File file = LittleFS.open("/index.html", "r");
+        if (!file) {
+            server.send(500, "text/plain", "Failed to open file");
+            return;
+        }
+        server.streamFile(file, "text/html");
+        file.close();
     });
 
-    // Обработчик включения/выключения
     server.on("/toggle", HTTP_GET, []() {
         toggleLamp();
         server.send(200, "text/plain", "Toggled!");
     });
 
-    // Обработчик смены цвета
     server.on("/color", HTTP_GET, []() {
         if (server.hasArg("c")) {
             String color = server.arg("c");
@@ -103,7 +86,6 @@ void setup() {
         }
     });
 
-    // Запуск сервера
     server.begin();
 }
 
