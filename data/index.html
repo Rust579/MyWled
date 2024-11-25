@@ -13,13 +13,19 @@
     h1 {
       color: #444;
     }
-    button, input[type="color"] {
+    button {
       padding: 10px;
       margin: 5px;
       font-size: 16px;
       cursor: pointer;
     }
+    .color-picker-wrapper {
+      display: inline-block;
+      margin-top: 20px;
+    }
   </style>
+  <!-- Подключаем библиотеку iro.js -->
+  <script src="https://cdn.jsdelivr.net/npm/@jaames/iro@5"></script>
 </head>
 <body>
   <h1>Управление лампой</h1>
@@ -27,14 +33,31 @@
   <button onclick="fetch('/color?c=red')">Красный</button>
   <button onclick="fetch('/color?c=green')">Зелёный</button>
   <button onclick="fetch('/color?c=blue')">Синий</button>
-  <br>
-  <input id="colorPicker" type="color" value="#ffffff">
-  <button onclick="setCustomColor()">Применить цвет</button>
+  
+  <!-- Контейнер для цветового колеса -->
+  <div class="color-picker-wrapper">
+    <div id="colorWheel"></div>
+    <br>
+    <button onclick="setCustomColor()">Применить цвет</button>
+  </div>
 
   <script>
+    // Создаем цветовое колесо с помощью iro.js
+    const colorPicker = new iro.ColorPicker("#colorWheel", {
+      width: 300,
+      color: "#ffffff", // начальный цвет
+    });
+
+    // Функция для отправки выбранного цвета на сервер
     function setCustomColor() {
-      const color = document.getElementById('colorPicker').value.substring(1); // Убираем #
-      fetch(`/color?c=${color}`);
+      const color = colorPicker.color.hexString.substring(1); // Получаем HEX цвет без #
+      fetch(`/color?c=${color}`).then(response => {
+        if (response.ok) {
+          console.log('Цвет изменен');
+        } else {
+          console.log('Ошибка при изменении цвета');
+        }
+      });
     }
   </script>
 </body>

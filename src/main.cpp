@@ -86,7 +86,10 @@ void setup() {
                     uint32_t g = strtol(color.substring(2, 4).c_str(), nullptr, 16);
                     uint32_t b = strtol(color.substring(4, 6).c_str(), nullptr, 16);
                     setColor(strip.Color(r, g, b));
-                }
+                } else {
+                server.send(400, "text/plain", "Invalid color format. Please use RRGGBB.");
+                return; // Завершаем обработку, если формат неправильный
+            }
             }
             server.send(200, "text/plain", "Color changed!");
         } else {
