@@ -21,14 +21,16 @@ void setColor(uint32_t color) {
     strip.show();
 }
 
-void toggleLamp() {
-    if (isOn) {
-        setColor(0);
-        isOn = false;
-    } else {
-        setColor(colors[0]);
+void turnOnLamp() {
+    if (!isOn) {
+        setColor(colors[0]); // Включаем лампу с первым цветом (красный по умолчанию)
         isOn = true;
     }
+}
+
+void turnOffLamp() {
+    setColor(0); // Выключаем лампу
+    isOn = false;
 }
 
 void setup() {
@@ -55,6 +57,7 @@ void setup() {
     strip.begin();
     strip.show();
 
+    // Эндпоинт для отображения главной страницы
     server.on("/", HTTP_GET, []() {
         File file = LittleFS.open("/index.html", "r");
         if (!file) {
@@ -65,39 +68,37 @@ void setup() {
         file.close();
     });
 
-    server.on("/toggle", HTTP_GET, []() {
-        toggleLamp();
-        server.send(200, "text/plain", "Toggled!");
+    // Эндпоинт для включения лампы
+    server.on("/turnOn", HTTP_GET, []() {
+        turnOnLamp();
+        server.send(200, "text/plain", "Lamp turned on!");
     });
 
-     server.on("/color", HTTP_GET, []() {
-        if (server.hasArg("c")) {
-            String color = server.arg("c");
-            if (color == "red") {
-                setColor(colors[0]);
-            } else if (color == "green") {
-                setColor(colors[1]);
-            } else if (color == "blue") {
-                setColor(colors[2]);
-            } else {
-                // Преобразование HEX цвета в формат RGB
+    // Эндпоинт для выключения лампы
+    server.on("/turnOff", HTTP_GET, []() {
+        turnOffLamp();
+        server.send(200, "text/plain", "Lamp turned off!");
+    });
+
+    // Эндпоинт для смены цвета
+    server.on("/color", HTTP_GET, []() {
+        if (isOn) {
+            if (server.hasArg("c")) {
+                String color = server.arg("c");
                 if (color.length() == 6) { // Ожидается формат RRGGBB
                     uint32_t r = strtol(color.substring(0, 2).c_str(), nullptr, 16);
                     uint32_t g = strtol(color.substring(2, 4).c_str(), nullptr, 16);
                     uint32_t b = strtol(color.substring(4, 6).c_str(), nullptr, 16);
                     setColor(strip.Color(r, g, b));
+                    server.send(200, "text/plain", "Color changed!");
                 } else {
-                server.send(400, "text/plain", "Invalid color format. Please use RRGGBB.");
-                return; // Завершаем обработку, если формат неправильный
+                    server.send(400, "text/plain", "Invalid color format. Please use RRGGBB.");
+                }
+            } else {
+                server.send(400, "text/plain", "Missing color parameter");
             }
-            }
-            server.send(200, "text/plain", "Color changed!");
-        } else {
-            server.send(400, "text/plain", "Missing color parameter");
         }
     });
-
-
 
     server.begin();
 }

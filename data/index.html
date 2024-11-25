@@ -14,7 +14,7 @@
       color: #444;
     }
     button {
-      padding: 10px;
+      padding: 10px 20px;
       margin: 5px;
       font-size: 16px;
       cursor: pointer;
@@ -29,10 +29,9 @@
 </head>
 <body>
   <h1>Управление лампой</h1>
-  <button onclick="fetch('/toggle')">Вкл/Выкл</button>
-  <button onclick="fetch('/color?c=red')">Красный</button>
-  <button onclick="fetch('/color?c=green')">Зелёный</button>
-  <button onclick="fetch('/color?c=blue')">Синий</button>
+  <!-- Кнопки для включения и выключения лампы -->
+  <button onclick="fetch('/turnOn')">Включить</button>
+  <button onclick="fetch('/turnOff')">Выключить</button>
   
   <!-- Контейнер для цветового колеса -->
   <div class="color-picker-wrapper">
