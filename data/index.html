@@ -1,8 +1,25 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>My Lamp</title>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Lamp</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin-top: 50px;
+    }
+    h1 {
+      color: #444;
+    }
+    button, input[type="color"] {
+      padding: 10px;
+      margin: 5px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+  </style>
 </head>
 <body>
   <h1>Управление лампой</h1>
@@ -10,5 +27,15 @@
   <button onclick="fetch('/color?c=red')">Красный</button>
   <button onclick="fetch('/color?c=green')">Зелёный</button>
   <button onclick="fetch('/color?c=blue')">Синий</button>
+  <br>
+  <input id="colorPicker" type="color" value="#ffffff">
+  <button onclick="setCustomColor()">Применить цвет</button>
+
+  <script>
+    function setCustomColor() {
+      const color = document.getElementById('colorPicker').value.substring(1); // Убираем #
+      fetch(`/color?c=${color}`);
+    }
+  </script>
 </body>
 </html>

@@ -70,7 +70,7 @@ void setup() {
         server.send(200, "text/plain", "Toggled!");
     });
 
-    server.on("/color", HTTP_GET, []() {
+     server.on("/color", HTTP_GET, []() {
         if (server.hasArg("c")) {
             String color = server.arg("c");
             if (color == "red") {
@@ -79,12 +79,22 @@ void setup() {
                 setColor(colors[1]);
             } else if (color == "blue") {
                 setColor(colors[2]);
+            } else {
+                // Преобразование HEX цвета в формат RGB
+                if (color.length() == 6) { // Ожидается формат RRGGBB
+                    uint32_t r = strtol(color.substring(0, 2).c_str(), nullptr, 16);
+                    uint32_t g = strtol(color.substring(2, 4).c_str(), nullptr, 16);
+                    uint32_t b = strtol(color.substring(4, 6).c_str(), nullptr, 16);
+                    setColor(strip.Color(r, g, b));
+                }
             }
             server.send(200, "text/plain", "Color changed!");
         } else {
             server.send(400, "text/plain", "Missing color parameter");
         }
     });
+
+
 
     server.begin();
 }
