@@ -23,6 +23,12 @@
       display: inline-block;
       margin-top: 20px;
     }
+    .slider-wrapper {
+      margin-top: 20px;
+    }
+    .slider {
+      width: 200px;
+    }
   </style>
   <!-- Подключаем библиотеку iro.js -->
   <script src="https://cdn.jsdelivr.net/npm/@jaames/iro@5"></script>
@@ -33,12 +39,25 @@
   <button onclick="fetch('/turnOn')">Включить</button>
   <button onclick="fetch('/turnOff')">Выключить</button>
   
+  <!-- Кнопка для стандартного режима -->
+  <button onclick="fetch('/standard')">Стандартный режим</button>
+
   <!-- Контейнер для цветового колеса -->
   <div class="color-picker-wrapper">
     <div id="colorWheel"></div>
     <br>
     <button onclick="setCustomColor()">Применить цвет</button>
   </div>
+
+  <!-- Слайдер для регулировки яркости -->
+  <div class="slider-wrapper">
+    <input type="range" min="1" max="255" value="255" class="slider" id="brightnessSlider" oninput="updateBrightness()">
+    <p>Яркость: <span id="brightnessValue">255</span></p>
+  </div>
+
+  <!-- Кнопки для режимов работы -->
+  <button onclick="fetch('/rainbow')">Радуга</button>
+  <button onclick="fetch('/random')">Случайные цвета</button>
 
   <script>
     // Создаем цветовое колесо с помощью iro.js
@@ -55,6 +74,19 @@
           console.log('Цвет изменен');
         } else {
           console.log('Ошибка при изменении цвета');
+        }
+      });
+    }
+
+    // Функция для обновления яркости
+    function updateBrightness() {
+      const brightness = document.getElementById('brightnessSlider').value;
+      document.getElementById('brightnessValue').innerText = brightness;
+      fetch(`/brightness?b=${brightness}`).then(response => {
+        if (response.ok) {
+          console.log('Яркость изменена');
+        } else {
+          console.log('Ошибка при изменении яркости');
         }
       });
     }

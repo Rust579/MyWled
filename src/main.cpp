@@ -15,6 +15,43 @@ ESP8266WebServer server(80);
 uint32_t colors[3] = {strip.Color(255, 0, 0), strip.Color(0, 255, 0), strip.Color(0, 0, 255)};
 bool isOn = false;
 char lampName[20] = DEFAULT_NAME; // Уникальное имя лампы (по умолчанию)
+int brightness = 255; // Яркость по умолчанию
+
+enum Mode {
+    MODE_OFF,
+    MODE_ON,
+    MODE_RAINBOW,
+    MODE_RANDOM
+};
+
+Mode currentMode = MODE_OFF;
+unsigned long lastUpdate = 0;
+int rainbowIndex = 0;
+int randomColorIndex = 0;
+
+uint32_t Wheel(byte WheelPos) {
+    WheelPos = 255 - WheelPos;
+    if(WheelPos < 85) {
+        return strip.Color(255 - WheelPos * 3, 0, WheelPos * 3);
+    }
+    if(WheelPos < 170) {
+        WheelPos -= 85;
+        return strip.Color(0, WheelPos * 3, 255 - WheelPos * 3);
+    }
+    WheelPos -= 170;
+    return strip.Color(WheelPos * 3, 255 - WheelPos * 3, 0);
+}
+
+void updateRainbow() {
+    for (int i = 0; i < NUM_PIXELS; i++) {
+        strip.setPixelColor(i, Wheel(((i * 256 / NUM_PIXELS) + rainbowIndex) & 255));
+    }
+    strip.show();
+    rainbowIndex++;
+    if (rainbowIndex >= 256) {
+        rainbowIndex = 0;
+    }
+}
 
 void setColor(uint32_t color) {
     for (int i = 0; i < NUM_PIXELS; i++) {
@@ -33,6 +70,41 @@ void turnOnLamp() {
 void turnOffLamp() {
     setColor(0); // Выключаем лампу
     isOn = false;
+}
+
+void setBrightness(int brightness) {
+    strip.setBrightness(brightness);
+    strip.show();
+}
+
+void updateRandomColors() {
+    static unsigned long lastColorChange = 0;
+    unsigned long now = millis();
+
+    if (now - lastColorChange > 100) { // Смена цвета каждые 100 мс
+        lastColorChange = now;
+        uint32_t color = strip.Color(random(255), random(255), random(255));
+        setColor(color);
+    }
+}
+
+void rainbowCycle(uint8_t wait) {
+    uint16_t i, j;
+    for(j=0; j<256*5; j++) { // 5 циклов радуги
+        for(i=0; i< NUM_PIXELS; i++) {
+            strip.setPixelColor(i, Wheel(((i * 256 / NUM_PIXELS) + j) & 255));
+        }
+        strip.show();
+        delay(wait);
+    }
+}
+
+void flashRandomColors(uint8_t wait) {
+    for(int i=0; i<100; i++) { // 100 случайных цветов
+        uint32_t color = strip.Color(random(255), random(255), random(255));
+        setColor(color);
+        delay(wait);
+    }
 }
 
 void setup() {
@@ -125,10 +197,62 @@ void setup() {
         }
     });
 
+    // Эндпоинт для регулировки яркости
+    server.on("/brightness", HTTP_GET, []() {
+        if (server.hasArg("b")) {
+            int newBrightness = server.arg("b").toInt();
+            if (newBrightness >= 1 && newBrightness <= 255) {
+                brightness = newBrightness;
+                setBrightness(brightness);
+                server.send(200, "text/plain", "Brightness changed!");
+            } else {
+                server.send(400, "text/plain", "Invalid brightness value. Please use a value between 0 and 255.");
+            }
+        } else {
+            server.send(400, "text/plain", "Missing brightness parameter");
+        }
+    });
+
+     // Эндпоинт для режима радуги
+    server.on("/rainbow", HTTP_GET, []() {
+        currentMode = MODE_RAINBOW;
+        rainbowIndex = 0;
+        server.send(200, "text/plain", "Rainbow mode started!");
+    });
+
+    // Эндпоинт для режима случайных цветов
+    server.on("/random", HTTP_GET, []() {
+        currentMode = MODE_RANDOM;
+        randomColorIndex = 0;
+        server.send(200, "text/plain", "Random colors mode started!");
+    });
+
+     // Эндпоинт для стандартного режима
+    server.on("/standard", HTTP_GET, []() {
+        currentMode = MODE_ON;
+        server.send(200, "text/plain", "Standard mode started!");
+    });
+
     server.begin();
 }
 
 void loop() {
     server.handleClient();
     MDNS.update();
+
+    unsigned long now = millis();
+    if (now - lastUpdate > 10) { // Обновление каждые 10 мс
+        lastUpdate = now;
+        switch (currentMode) {
+            case MODE_RAINBOW:
+                updateRainbow();
+                break;
+            case MODE_RANDOM:
+                updateRandomColors();
+                break;
+            case MODE_ON:
+                // В стандартном режиме лампа просто светит непрерывно
+                break;
+        }
+    }
 }
